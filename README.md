@@ -28,6 +28,11 @@ Awesome depth maps can be generated with [MegaDepth](https://github.com/lixx2938
 Comment the macro `LEAP_MOTION_ON` to disable undesired functionalities.	
 After launching the app, type `h` for a complete list of key-stroke actions.		
 
+## Further steps
+
+To inpaint deocclusions due to the parallax effect with simple methods like Navier-Strokes or more sophisticated approaches. 
+
+Towards the awesome and brilliant [3D Ken Burns](https://github.com/sniklaus/3d-ken-burns).
+
 ---
 Rafael Redondo (c) 2020.
-
