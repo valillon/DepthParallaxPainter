@@ -71,10 +71,11 @@ void ofApp::draw()
     msg += "\nCamera orbit 'spacebar'";
     msg += "\nFocal distance 'q,w': "   + ofToString(camera.focal, 2);
     msg += "\nExtrusion 'e,r': "        + ofToString(camera.extrusion, 2);
+    msg += "\nInpaint background 'i': " + ofToString(bInpaint);
     msg += "\nDepth planes 'n,m': "     + ofToString(nPlanes, 2);
+    msg += "\nShow depth 'd': "         + ofToString(bDepth);
+    msg += "\nSwitch depth mode 'b': "  + ofToString(bPlanes);
     msg += "\nRerun depth planes '.'";
-    msg += "\nShow depth 'd'";
-    msg += "\nSwitch depth mode 'b': " + ofToString(bPlanes);
     msg += "\nRender mode 'z,x,c'";
 
 #ifdef LEAP_MOTION_ON
@@ -98,30 +99,51 @@ void ofApp::updateCanvas()
     if ( bPlanes )
     {
         // The variable 'means' should contain k-centroids after unsupervised clustering
-        // For some strange reason the clustering works fine but the output centroids get entangled
+        // For some strange reason the clustering works fine but the output centroids are sometimes entangled
         ofImage planes;
         cv::Mat means = ofxCv::kmeans(image_depth, planes, nPlanes);
         cv::Mat planesCV = ofxCv::toCv(planes);
         planesCV.convertTo(planesCV, CV_32F);
-        for (int k = 0; k < means.rows; ++k)
+        
+        for ( int k = 0; k < means.rows; ++k )
         {
             int p = means.at<uchar>(k);
-            cv::Mat plane = planesCV.clone();
-            plane.setTo(-1, plane != p);   // use -1 to mask pixels
-            addCanvasPlane(image_depth, plane);
+            cv::Mat maskCV = planesCV.clone();
+            
+            if ( bInpaint && k == 0)
+            {
+                // Take the first plane in principle being at the backpground and inpaint empty areas
+                maskCV.setTo(1, planesCV != p);
+                maskCV.setTo(0, planesCV == p);
+                ofImage inpainted, mask;
+                maskCV.convertTo(maskCV, CV_8UC1);
+                ofxCv::toOf(maskCV, mask);
+                ofxCv::inpaint(image, mask, inpainted);
+                ofImage inpainted_depth;
+                ofxCv::inpaint(image_depth, mask, inpainted_depth); // depth should be inpainted too
+                addCanvasPlane(inpainted, inpainted_depth, cv::Mat::ones(maskCV.size(), CV_32F));
+                
+            } else {
+                
+                // Add remaining planes with their corresponding masks
+                maskCV.setTo(-1, planesCV != p);   // use -1 to mask pixels
+                addCanvasPlane(image, image_depth, maskCV);
+            }
         }
         
-    } else addCanvasPlane(image_depth);
+    } else addCanvasPlane(image, image_depth);
     
     canvas.updateLimits();
 }
-void ofApp::addCanvasPlane(ofImage depth, cv::Mat mask)
+
+// src: image containing pixels colors
+// depth: an image containing depth information
+// mask: an image in which -1 stands for masked pixels and positive values stand for target depth values
+void ofApp::addCanvasPlane(ofImage src, ofImage depth, cv::Mat mask)
 {
-    // depth: an image containing depth information
-    // mask: an image in which -1 stands for masked pixels and positive values stand for target depth values
     ofLogNotice() << "Updating mesh " << canvas.meshes.size() << " in depth mode " << bPlanes;
     
-    unsigned char * iData = image.getPixels().getData();
+    unsigned char * sData = src.getPixels().getData();
     unsigned char * dData = depth.getPixels().getData();
     float * mData = mask.empty() ? nullptr : mask.ptr<float>(0);
         
@@ -156,9 +178,9 @@ void ofApp::addCanvasPlane(ofImage depth, cv::Mat mask)
 
             // Color
             pos *= 3;
-            int r = iData[ pos ];
-            int g = iData[ pos + 1 ];
-            int b = iData[ pos + 2 ];
+            int r = sData[ pos ];
+            int g = sData[ pos + 1 ];
+            int b = sData[ pos + 2 ];
             int a = 255;
             ofColor color = bDepth ? ofColor(d,d,d,a) : ofColor(r,g,b,a);
             
@@ -219,6 +241,7 @@ void ofApp::keyPressed(int key)
         case 'h': bHelp = ! bHelp;                                          break;
         case 'd': bDepth = ! bDepth;                    updateCanvas();     break;
         case 'b': bPlanes = ! bPlanes;                  updateCanvas();     break;
+        case 'i': bInpaint = ! bInpaint;                updateCanvas();     break;
         case 'z': canvas.render = OF_MESH_POINTS;       updateCanvas();     break;
         case 'x': canvas.render = OF_MESH_WIREFRAME;    updateCanvas();     break;
         case 'c': canvas.render = OF_MESH_FILL;         updateCanvas();     break;

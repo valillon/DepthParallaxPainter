@@ -1,7 +1,7 @@
 /*
 The code in this repository is available under the MIT License.
 
-Copyright (c) 2019 - Rafael Redondo
+Copyright (c) 2020 - Rafael Redondo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -66,7 +66,7 @@ public:
     
     void loadExample();
     void updateCanvas();
-    void addCanvasPlane(ofImage depth, cv::Mat mask = cv::Mat());
+    void addCanvasPlane(ofImage src, ofImage depth, cv::Mat mask = cv::Mat());
     
     class Canvas
     {
@@ -102,7 +102,7 @@ public:
     ofImage image, image_depth;
     int example, nPlanes;
 
-    bool bHelp = true, bLoaded = false, bDepth = false, bPlanes = false;
+    bool bHelp = true, bLoaded = false, bDepth = false, bPlanes = false, bInpaint = false;
 
     ofColor central_color, edge_color;
 
